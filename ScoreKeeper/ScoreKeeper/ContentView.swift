@@ -21,7 +21,7 @@ struct ContentView: View {
 //    ]
     
     @State private var scoreboard = Scoreboard()
-    private var startingPoints = 0
+    @State private var startingPoints = 0
     
     var body: some View {
 //        VStack {
@@ -33,6 +33,10 @@ struct ContentView: View {
             // This line uses SwiftUI’s `ForEach` view to create a dynamic list of views—one for each player in the `players` array. The range `0..<players.count` generates a sequence of integer indices from 0 up to (but not including) the number of players. For each index, the closure `{ index in ... }` is executed, allowing you to access and modify each player's name individually.
             // The `id: \.description` part tells SwiftUI how to uniquely identify each element in the sequence. Here, it uses the string description of each index as the identifier. While this works for simple cases, it’s generally safer to use the index itself (`id: \.self`) when iterating over a range of integers, as it avoids potential confusion and is more idiomatic.
             // Overall, this line sets up a loop that generates a view (like a `TextField`) for each player, making the UI automatically adjust as players are added or removed.
+            
+            SettingsView(doesHighestScoreWin: $scoreboard.doesHighestScoreWin, startingPoints: $startingPoints)
+                .disabled(scoreboard.state != .setup)
+            
             Grid{
                 GridRow {
                     Text("Player")
@@ -43,10 +47,19 @@ struct ContentView: View {
                 
                 ForEach($scoreboard.players) { $player in
                     GridRow {
-                        TextField("Name", text: $player.name)
+                        HStack {
+                            if scoreboard.winners.contains(player) {
+                                Image(systemName: "crown.fill")
+                                    .foregroundStyle(Color.yellow)
+                            }
+                            TextField("Name", text: $player.name)
+                                .disabled(scoreboard.state != .setup)
+                        }
                         Text("\(player.score)")
+                            .opacity(scoreboard.state == .setup ? 0 : 1.0)
                         Stepper("\(player.score)", value: $player.score)
                             .labelsHidden()
+                            .opacity(scoreboard.state == .setup ? 0 : 1.0)
                     }
                 }
             }
@@ -57,23 +70,33 @@ struct ContentView: View {
             Button("Add Player", systemImage: "plus") {
                 scoreboard.players.append(Player(name: "", score: 0))
             }
+            .opacity(scoreboard.state == .setup ? 0 : 1.0)
+            
             Spacer()
             
-            switch scoreboard.state {
-            case .setup:
-                Button("Start Game", systemImage: "play.fill") {
-                    scoreboard.state = .playing
-                    scoreboard.resetScores(to: startingPoints)
+            HStack {
+                Spacer()
+                switch scoreboard.state {
+                case .setup:
+                    Button("Start Game", systemImage: "play.fill") {
+                        scoreboard.state = .playing
+                        scoreboard.resetScores(to: startingPoints)
+                    }
+                case .playing:
+                    Button("End Game", systemImage: "stop.fill") {
+                        scoreboard.state = .gameOver
+                    }
+                case .gameOver:
+                    Button("Reset Game", systemImage: "arrow.counterclockwise") {
+                        scoreboard.state = .setup
+                    }
                 }
-            case .playing:
-                Button("End Game", systemImage: "stop.fill") {
-                    scoreboard.state = .gameOver
-                }
-            case .gameOver:
-                Button("Reset Game", systemImage: "arrow.counterclockwise") {
-                    scoreboard.state = .setup
-                }
+                Spacer()
             }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.large)
+            .tint(.blue)
         }
         .padding()
     }
